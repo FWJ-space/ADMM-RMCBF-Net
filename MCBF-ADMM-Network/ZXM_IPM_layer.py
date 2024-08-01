@@ -1,0 +1,115 @@
+import torch
+import matlab.engine
+from Z1_layer_Lagrange import Z1SDPSlover
+from Z1_layer_Lagrange import Z2SDPSlover
+from Z1_layer_Lagrange import Z1SDPSloveri
+from Z1_layer_Lagrange import Z2SDPSloveri
+from Xt_layer import Xt_Layer
+from Xrho1_layer import  Xrho1_Layer
+from Xrho2_layer import  Xrho2_Layer
+from Mv1_layer import Mv1_Layer
+from Mv2_layer import Mv2_Layer
+from Mmu1_layer import Mmu1_Layer
+from Mmu2_layer import Mmu2_Layer
+
+
+
+
+
+# 先定义一个模型
+class ZXM_layer(torch.nn.Module):
+    def __init__(self):
+        super(ZXM_layer, self).__init__()  # 第一句话，调用父类的构造函数
+        # Z_layer_net = torch.load('D:\Python36\Z_learn\Z_layer_net')
+
+        self.Z1_layer = Z1SDPSlover()
+        self.Z2_layer = Z2SDPSlover()
+        self.Z1_layeri = Z1SDPSloveri()
+        self.Z2_layeri = Z2SDPSloveri()
+        self.Xt_layer = Xt_Layer()
+        self.Xrho1_layer = Xrho1_Layer()
+        self.Xrho2_layer = Xrho2_Layer()
+        self.Mv1_layer = Mv1_Layer()
+        self.Mv2_layer = Mv2_Layer()
+        self.Mmu1_layer = Mmu1_Layer()
+        self.Mmu2_layer = Mmu2_Layer()
+
+        # c = torch.tensor([5000.0], requires_grad=True)
+        # c = c.double()
+        # self.c = torch.nn.Parameter(c, requires_grad=True)  # 由于weights是可以训练的，所以使用Parameter来定义
+
+    def forward(self,rho1,rho2,mu1,mu2,v1,v2,t,H1,H2,c):
+
+
+       # 单一参数模式
+
+       #  # Z_layer
+       #  print("Z_layer")
+       #  p1,W11,W12,t1211, t1221,t2111,t2121 = self.Z1_layer(rho1,mu1,v1,t,H1,H2,c)
+       #  p2,W21,W22,t121, t122, t211, t212 = self.Z2_layer(rho2,mu2,v2,t,H1,H2,c)
+       #  # X_layer
+       #  print("X_layer")
+       #  t1 = torch.Tensor([[t2111], [t2121], [t1211], [t1221]])
+       #  t2 = torch.Tensor([[t121], [t122], [t211], [t212]])
+       #  t=self.Xt_layer(t1,t2,v1,v2,c)
+       #
+       #
+       #  rho1 = self.Xrho1_layer(p1,mu1,c)
+       #  rho2 = self.Xrho2_layer(p2, mu2,c)
+       #
+       # # print("%.8f , %.8f" %(p11,p22))
+       #  # M_layer
+       #  print("M_layer")
+       #  v1 = self.Mv1_layer(t,t1,v1,c)
+       #  v2 = self.Mv2_layer(t, t2, v2,c)
+       #  mu1 = self.Mmu1_layer(rho1 ,p1 , mu1,c)
+
+       #  mu2 = self.Mmu2_layer(rho2, p2, mu2,c)
+
+
+
+       #  每层一个参数模式
+
+        # Z_layer
+        print("Z_layer")
+        p1,t1211, t1221,t2111,t2121 = self.Z1_layer(rho1,mu1,v1,t,H1,H2,c)
+
+        p1i, t1211i, t1221i, t2111i, t2121i = self.Z1_layeri(rho1, mu1, v1, t, H1, H2, c)
+
+        p2,t121, t122, t211, t212 = self.Z2_layer(rho2,mu2,v2,t,H1,H2,c)
+
+        p2i, t121i, t122i, t211i, t212i = self.Z2_layeri(rho2, mu2, v2, t, H1, H2, c)
+        p1 = p1+p1i
+        p2 = p2+p2i
+        t1211 = t1211+t1211i
+        t1221 = t1221 + t1221i
+        t2111 = t2111 + t2111i
+        t2121 = t2121 + t2121i
+        t121 = t121 + t121i
+        t122 = t122 + t122i
+        t211 = t211 + t211i
+        t212 = t2121+ t212i
+        # X_layer
+        print("X_layer")
+        t1 = torch.Tensor([[t2111], [t2121], [t1211], [t1221]])
+        t2 = torch.Tensor([[t121], [t122], [t211], [t212]])
+        t=self.Xt_layer(t1,t2,v1,v2,self.c)
+
+
+        rho1 = self.Xrho1_layer(p1,mu1,self.c)
+        rho2 = self.Xrho2_layer(p2, mu2,self.c)
+
+       # print("%.8f , %.8f" %(p11,p22))
+        # M_layer
+        print("M_layer")
+        v1 = self.Mv1_layer(t,t1,v1,self.c)
+        v2 = self.Mv2_layer(t, t2, v2,self.c)
+        mu1 = self.Mmu1_layer(rho1 ,p1 , mu1,self.c)
+        mu2 = self.Mmu2_layer(rho2, p2, mu2,self.c)
+
+
+        return rho1,rho2,mu1,mu2,v1,v2,t,H1,H2,p1,p2
+
+
+
+
